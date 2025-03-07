@@ -14,4 +14,10 @@
 
 - 추출한 텍스트 내용을 검색하는 기능도 제공합니다.
 
-  
+## Screenshot
+
+<img src="https://github.com/asadal/hani-extractor/blob/main/images/he_01.png" width="100%">
+
+<img src="https://github.com/asadal/hani-extractor/blob/main/images/he_02.png" width="100%">
+
+<img src="https://github.com/asadal/hani-extractor/blob/main/images/he_03.png" width="300">
