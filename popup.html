@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hani Extractor</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Hani Extractor</h1>
+      <div class="controls">
+        <button id="toggleExtract" class="toggle-btn">추출 시작</button>
+        <button id="clearAll" class="clear-btn">모두 지우기</button>
+        <button id="saveText" class="save-btn">저장</button>
+      </div>
+    </header>
+    
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="extracted">추출 내용</button>
+      <button class="tab-btn" data-tab="settings">설정</button>
+    </div>
+    
+    <div class="content">
+      <!-- 추출 내용 탭 -->
+      <div id="extractedTab" class="tab-content active">
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="검색어 입력...">
+          <select id="filterSelect">
+            <option value="all">모든 요소</option>
+            <option value="tag">태그별</option>
+            <option value="class">클래스별</option>
+            <option value="id">ID별</option>
+          </select>
+        </div>
+        
+        <div class="export-options">
+          <select id="exportFormat">
+            <option value="txt">TXT</option>
+            <option value="csv">CSV</option>
+            <option value="json">JSON</option>
+            <option value="html">HTML</option>
+          </select>
+          <button id="copyToClipboard" class="icon-btn" title="클립보드에 복사">
+            📋
+          </button>
+        </div>
+        
+        <div id="extractedTextContainer">
+          <div id="extractedText" class="text-area"></div>
+        </div>
+      </div>
+      
+      <!-- 설정 탭 -->
+      <div id="settingsTab" class="tab-content">
+        <div class="settings-group">
+          <h3>자동 추출 설정</h3>
+          <div class="setting-item">
+            <label for="autoExtractTags">추출할 태그 (쉼표로 구분)</label>
+            <div style="display: flex; gap: 5px;">
+              <input type="text" id="autoExtractTags" placeholder="h1, h2, p.important, div#content" style="flex: 1;">
+              <button id="selectTagBtn" class="icon-btn" title="요소 선택">👆</button>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label for="containerSelector">컨테이너 선택자</label>
+            <div style="display: flex; gap: 5px;">
+              <input type="text" id="containerSelector" placeholder="#main-content, .article-body" style="flex: 1;">
+              <button id="selectContainerBtn" class="icon-btn" title="컨테이너 선택">👆</button>
+            </div>
+          </div>
+          <button id="autoExtractBtn" class="action-btn">자동 추출 실행</button>
+        </div>
+        
+        <div class="settings-group">
+          <h3>선택 추출 설정</h3>
+          <div class="setting-item">
+            <label>
+              <input type="checkbox" id="enableAreaSelection">
+              영역 선택 추출 활성화 (Shift 키 + 드래그)
+            </label>
+          </div>
+        </div>
+        
+        <div class="settings-group">
+          <h3>단축키 안내</h3>
+          <div class="shortcut-info">
+            <p><strong>Ctrl+Shift+E</strong>: 텍스트 추출 기능 켜기/끄기</p>
+            <p><strong>Ctrl+Shift+S</strong>: 선택 영역 텍스트 추출</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <footer>
+      <div class="info">
+        <span id="status">비활성화됨</span>
+        <span id="elementInfo"></span>
+      </div>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

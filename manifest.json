@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Hani Extractor",
+  "version": "1.0",
+  "description": "웹페이지에서 선택한 요소의 텍스트를 추출하는 고급 확장프로그램",
+  "permissions": ["activeTab", "storage", "scripting", "downloads", "clipboardWrite", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "commands": {
+    "toggle-extraction": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+E",
+        "mac": "Command+Shift+E"
+      },
+      "description": "텍스트 추출 기능 켜기/끄기"
+    },
+    "capture-selection": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "선택 영역 텍스트 추출"
+    }
+  }
+}
