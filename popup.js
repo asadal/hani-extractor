@@ -55,47 +55,58 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // 팝업이 열릴 때마다 스토리지에서 대기 중인 선택자가 있는지 확인
   function checkPendingSelector() {
-    chrome.storage.local.get(['selectorPending', 'lastSelectedSelector', 'lastSelectionType'], function(result) {
-      if (chrome.runtime.lastError) {
-        console.error('스토리지 접근 오류:', chrome.runtime.lastError.message);
-        return;
-      }
-      
-      // 대기 중인 선택자가 있으면 처리
-      if (result.selectorPending && result.lastSelectedSelector) {
-        console.log('대기 중인 선택자 발견:', result.lastSelectedSelector);
-        
-        if (result.lastSelectionType === 'tag') {
-          // 태그 선택자 필드에 추가
-          const currentValue = autoExtractTags.value.trim();
-          const newSelector = result.lastSelectedSelector.trim();
-          
-          if (currentValue) {
-            // 이미 값이 있으면 쉼표로 구분해서 추가
-            autoExtractTags.value = currentValue + ', ' + newSelector;
-          } else {
-            // 값이 없으면 그대로 설정
-            autoExtractTags.value = newSelector;
-          }
-          
-          // 설정 저장
-          chrome.storage.local.set({ autoExtractTags: autoExtractTags.value });
-          
-        } else if (result.lastSelectionType === 'container') {
-          // 컨테이너 선택자 필드에 설정
-          containerSelector.value = result.lastSelectedSelector.trim();
-          
-          // 설정 저장
-          chrome.storage.local.set({ containerSelector: containerSelector.value });
+    chrome.storage.local.get(
+      ["selectorPending", "lastSelectedSelector", "lastSelectionType"],
+      function (result) {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "스토리지 접근 오류:",
+            chrome.runtime.lastError.message,
+          );
+          return;
         }
-        
-        // 처리 완료 후 플래그 초기화
-        chrome.storage.local.set({ selectorPending: false });
-        
-        // 선택 완료 알림
-        alert(`선택자가 성공적으로 추가되었습니다: ${result.lastSelectedSelector}`);
-      }
-    });
+
+        // 대기 중인 선택자가 있으면 처리
+        if (result.selectorPending && result.lastSelectedSelector) {
+          console.log("대기 중인 선택자 발견:", result.lastSelectedSelector);
+
+          if (result.lastSelectionType === "tag") {
+            // 태그 선택자 필드에 추가
+            const currentValue = autoExtractTags.value.trim();
+            const newSelector = result.lastSelectedSelector.trim();
+
+            if (currentValue) {
+              // 이미 값이 있으면 쉼표로 구분해서 추가
+              autoExtractTags.value = currentValue + ", " + newSelector;
+            } else {
+              // 값이 없으면 그대로 설정
+              autoExtractTags.value = newSelector;
+            }
+
+            // 설정 저장
+            chrome.storage.local.set({
+              autoExtractTags: autoExtractTags.value,
+            });
+          } else if (result.lastSelectionType === "container") {
+            // 컨테이너 선택자 필드에 설정
+            containerSelector.value = result.lastSelectedSelector.trim();
+
+            // 설정 저장
+            chrome.storage.local.set({
+              containerSelector: containerSelector.value,
+            });
+          }
+
+          // 처리 완료 후 플래그 초기화
+          chrome.storage.local.set({ selectorPending: false });
+
+          // 선택 완료 알림
+          alert(
+            `선택자가 성공적으로 추가되었습니다: ${result.lastSelectedSelector}`,
+          );
+        }
+      },
+    );
   }
 
   // 팝업이 열릴 때마다 실행
@@ -150,6 +161,7 @@ document.addEventListener("DOMContentLoaded", function () {
   );
 
   // 추출 시작/종료 버튼
+  // toggleExtractBtn의 클릭 이벤트 핸들러 부분 수정
   toggleExtractBtn.addEventListener("click", function () {
     isExtracting = !isExtracting;
     chrome.storage.local.set({ isExtracting: isExtracting });
@@ -157,27 +169,52 @@ document.addEventListener("DOMContentLoaded", function () {
     // 현재 활성 탭에 메시지 전송
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       if (tabs.length > 0) {
-        try {
-          chrome.tabs.sendMessage(
-            tabs[0].id,
-            {
-              action: isExtracting ? "startExtract" : "stopExtract",
-              enableAreaSelection: enableAreaSelection,
-            },
-            function (response) {
-              if (chrome.runtime.lastError) {
-                console.log(
-                  "탭과 연결할 수 없습니다:",
-                  chrome.runtime.lastError.message,
-                );
-              } else {
-                console.log("탭 응답:", response);
-              }
-            },
-          );
-        } catch (error) {
-          console.error("탭 통신 오류:", error);
-        }
+        // background 스크립트를 통해 content script 로드 확인
+        chrome.runtime.sendMessage(
+          {
+            action: "ensureContentScriptLoaded",
+            tabId: tabs[0].id,
+          },
+          function (result) {
+            if (chrome.runtime.lastError) {
+              console.log(
+                "Background와 통신할 수 없습니다:",
+                chrome.runtime.lastError.message,
+              );
+              return;
+            }
+
+            if (result && result.success) {
+              // 이제 content script가 로드되었으므로 메시지 전송 시도
+              chrome.tabs.sendMessage(
+                tabs[0].id,
+                {
+                  action: isExtracting ? "startExtract" : "stopExtract",
+                  enableAreaSelection: enableAreaSelection,
+                },
+                function (response) {
+                  if (chrome.runtime.lastError) {
+                    console.log(
+                      "탭과 연결할 수 없습니다. 이는 정상적인 동작일 수 있습니다:",
+                      chrome.runtime.lastError.message,
+                    );
+                    // 오류가 발생해도 계속 진행 - 사용자에게 명시적 오류 표시 안함
+                  } else {
+                    console.log("탭 응답:", response);
+                  }
+                },
+              );
+            } else {
+              console.log(
+                "Content script를 로드할 수 없습니다:",
+                result ? result.error : "알 수 없는 오류",
+              );
+              alert(
+                "현재 페이지에서 확장 프로그램을 로드할 수 없습니다. 페이지를 새로고침하고 다시 시도해보세요.",
+              );
+            }
+          },
+        );
       }
     });
 
@@ -200,7 +237,6 @@ document.addEventListener("DOMContentLoaded", function () {
   copyToClipboard.addEventListener("click", function () {
     copyTextToClipboard();
   });
-
   // 검색 기능
   searchInput.addEventListener("input", function () {
     updateExtractedTextDisplay();
@@ -255,30 +291,48 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   // 태그 선택 버튼
-  selectTagBtn.addEventListener("click", function() {
+  selectTagBtn.addEventListener("click", function () {
     startElementSelection("tag");
   });
 
   // 컨테이너 선택 버튼
-  selectContainerBtn.addEventListener("click", function() {
+  selectContainerBtn.addEventListener("click", function () {
     startElementSelection("container");
   });
+
+  // 태그 지우기 버튼
+  document
+    .getElementById("clearTagsBtn")
+    .addEventListener("click", function () {
+      // 태그 입력 필드 비우기 및 변경사항 저장
+      autoExtractTags.value = "";
+      chrome.storage.local.set({ autoExtractTags: "" });
+    });
+
+  // 컨테이너 지우기 버튼
+  document
+    .getElementById("clearContainerBtn")
+    .addEventListener("click", function () {
+      // 컨테이너 선택자 입력 필드 비우기 및 변경사항 저장
+      containerSelector.value = "";
+      chrome.storage.local.set({ containerSelector: "" });
+    });
 
   // 요소 선택 모드 시작 함수
   function startElementSelection(type) {
     // 현재 활성화된 탭에 메시지 전송
-    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       if (tabs.length > 0) {
         chrome.runtime.sendMessage(
           {
             action: "ensureContentScriptLoaded",
             tabId: tabs[0].id,
           },
-          function(result) {
+          function (result) {
             if (chrome.runtime.lastError) {
               console.error(
                 "Background와 통신할 수 없습니다:",
-                chrome.runtime.lastError.message
+                chrome.runtime.lastError.message,
               );
               return;
             }
@@ -289,36 +343,40 @@ document.addEventListener("DOMContentLoaded", function () {
                 tabs[0].id,
                 {
                   action: "startElementSelection",
-                  selectionType: type
+                  selectionType: type,
                 },
-                function(response) {
+                function (response) {
                   if (chrome.runtime.lastError) {
                     console.log(
                       "탭과 연결할 수 없습니다:",
-                      chrome.runtime.lastError.message
+                      chrome.runtime.lastError.message,
                     );
                   } else {
                     console.log("요소 선택 시작:", response);
-                    
+
                     // 사용자에게 안내 메시지 표시
                     if (type === "tag") {
-                      alert("추출할 태그로 사용할 요소를 클릭하세요. 선택 후 팝업 창을 다시 열어주세요.");
+                      alert(
+                        "추출할 태그로 사용할 요소를 클릭하세요. 선택 후 팝업 창을 다시 열어주세요.",
+                      );
                     } else {
-                      alert("컨테이너 선택자로 사용할 요소를 클릭하세요. 선택 후 팝업 창을 다시 열어주세요.");
+                      alert(
+                        "컨테이너 선택자로 사용할 요소를 클릭하세요. 선택 후 팝업 창을 다시 열어주세요.",
+                      );
                     }
-                    
+
                     // 팝업 창을 닫아 웹 페이지와 상호작용할 수 있게 함
                     window.close();
                   }
-                }
+                },
               );
             } else {
               console.error(
                 "Content script를 로드할 수 없습니다:",
-                result ? result.error : "알 수 없는 오류"
+                result ? result.error : "알 수 없는 오류",
               );
             }
-          }
+          },
         );
       }
     });
@@ -415,8 +473,12 @@ document.addEventListener("DOMContentLoaded", function () {
     extractedTextContainer.innerHTML = "";
 
     if (extractedItems.length === 0) {
-      extractedTextContainer.innerHTML =
-        '<p class="empty-message">추출된 텍스트가 없습니다. 웹페이지에서 요소를 클릭하여 텍스트를 추출하세요.</p>';
+      // 변경: 명시적인 메시지 대신 placeholder 요소 사용
+      const placeholder = document.createElement("div");
+      placeholder.className = "placeholder-message";
+      placeholder.textContent =
+        "추출된 텍스트가 없습니다. 웹페이지에서 요소를 클릭하여 텍스트를 추출하세요.";
+      extractedTextContainer.appendChild(placeholder);
       return;
     }
 
@@ -426,7 +488,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 아이템 필터링 및 표시
     const filteredItems = extractedItems.filter((item) => {
-// 검색어 필터링
+      // 검색어 필터링
       const textMatch = item.text.toLowerCase().includes(searchTerm);
       const infoMatch = item.elementInfo.toLowerCase().includes(searchTerm);
       const contentMatch = textMatch || infoMatch;
@@ -558,27 +620,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
       case "html":
         content = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Hani Extractor 추출 결과</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-    .text-content { font-size: 14px; line-height: 1.5; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
-  </style>
-</head>
-<body>
-  <h1>추출된 텍스트</h1>
-  <div class="extracted-container">
-`;
+  <html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Hani Extractor 추출 결과</title>
+    <style>
+      body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+      .text-content { font-size: 14px; line-height: 1.5; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+    </style>
+  </head>
+  <body>
+    <h1>추출된 텍스트</h1>
+    <div class="extracted-container">
+  `;
 
         filteredItems.forEach((item) => {
           content += `    <div class="text-content">${item.text}</div>\n`;
         });
 
         content += `  </div>
-</body>
-</html>`;
+  </body>
+  </html>`;
         mimeType = "text/html";
         extension = "html";
         break;
@@ -709,12 +771,14 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       // 메시지에 ID 추가
-      const messageId = request.messageId || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const messageId =
+        request.messageId ||
+        `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       // 이미 처리한 메시지인지 확인
       if (window.processedMessageIds.has(messageId)) {
-        console.log('이미 처리된 메시지입니다. 건너뜁니다:', messageId);
-        sendResponse({ status: 'already-processed' });
+        console.log("이미 처리된 메시지입니다. 건너뜁니다:", messageId);
+        sendResponse({ status: "already-processed" });
         return true;
       }
 
@@ -736,7 +800,7 @@ document.addEventListener("DOMContentLoaded", function () {
       } else if (request.action === "bulkTextExtracted") {
         // 업데이트 전에 현재 항목 수를 기록
         const previousCount = extractedItems.length;
-        
+
         // 새 항목 추가
         extractedItems = [...extractedItems, ...request.data];
         chrome.storage.local.set({ extractedItems: extractedItems });
@@ -754,30 +818,31 @@ document.addEventListener("DOMContentLoaded", function () {
           // 태그 선택자 필드에 추가 (기존 값과 합치기)
           const currentValue = autoExtractTags.value.trim();
           const newSelector = request.selector.trim();
-          
+
           if (currentValue) {
             // 이미 값이 있으면 쉼표로 구분해서 추가
-            autoExtractTags.value = currentValue + ', ' + newSelector;
+            autoExtractTags.value = currentValue + ", " + newSelector;
           } else {
             // 값이 없으면 그대로 설정
             autoExtractTags.value = newSelector;
           }
-          
+
           // 설정 저장
           chrome.storage.local.set({ autoExtractTags: autoExtractTags.value });
-          
         } else if (request.selectionType === "container") {
           // 컨테이너 선택자 필드에 설정
           containerSelector.value = request.selector.trim();
-          
+
           // 설정 저장
-          chrome.storage.local.set({ containerSelector: containerSelector.value });
+          chrome.storage.local.set({
+            containerSelector: containerSelector.value,
+          });
         }
-        
+
         sendResponse({ status: "success" });
       }
 
       return true; // 비동기 응답을 위해 true 반환
-    }
+    },
   );
 });
