@@ -1,9 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Hani Extractor",
+  "name": "asadal Extractor",
   "version": "1.0",
-  "description": "웹페이지에서 선택한 요소의 텍스트를 추출하는 고급 확장프로그램",
-  "permissions": ["activeTab", "storage", "scripting", "downloads", "clipboardWrite", "tabs"],
+  "description": "웹페이지에서 선택한 요소의 텍스트를 추출하는 확장 프로그램",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "downloads",
+    "clipboardWrite",
+    "tabs"
+  ],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup.html",
