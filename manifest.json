@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "asadal Extractor",
-  "version": "1.0",
+  "version": "1.5",
   "description": "웹페이지에서 선택한 요소의 텍스트를 추출하는 확장 프로그램",
   "permissions": [
     "activeTab",
