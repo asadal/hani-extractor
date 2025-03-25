@@ -5,6 +5,22 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>asadal Extractor</title>
         <link rel="stylesheet" href="popup.css" />
+        <style>
+            .setting-description {
+                font-size: 11px;
+                color: #666;
+                display: block;
+                margin-top: 3px;
+                margin-left: 20px;
+            }
+
+            .settings-group h4 {
+                font-size: 13px;
+                font-weight: 500;
+                margin-bottom: 5px;
+                color: #333;
+            }
+        </style>
     </head>
     <body>
         <div class="container">
@@ -68,7 +84,7 @@
                 <div id="settingsTab" class="tab-content">
                     <div class="settings-group">
                         <h3>자동 추출 설정</h3>
-                        <!-- Changes to the settings group for autoExtractTags -->
+                        <!-- 기존 태그 설정 코드 -->
                         <div class="setting-item">
                             <label for="autoExtractTags"
                                 >추출할 태그 (쉼표로 구분)</label
@@ -87,7 +103,6 @@
                                 >
                                     👆
                                 </button>
-                                <!-- Added clear button with an X icon -->
                                 <button
                                     id="clearTagsBtn"
                                     class="icon-btn"
@@ -98,7 +113,7 @@
                             </div>
                         </div>
 
-                        <!-- Changes to the settings group for containerSelector -->
+                        <!-- 기존 컨테이너 선택자 코드 -->
                         <div class="setting-item">
                             <label for="containerSelector"
                                 >컨테이너 선택자</label
@@ -117,7 +132,6 @@
                                 >
                                     👆
                                 </button>
-                                <!-- Added clear button with an X icon -->
                                 <button
                                     id="clearContainerBtn"
                                     class="icon-btn"
@@ -127,6 +141,68 @@
                                 </button>
                             </div>
                         </div>
+
+                        <!-- 새로운 동적 콘텐츠 옵션 -->
+                        <div class="setting-item">
+                            <h4>동적 콘텐츠 처리 옵션</h4>
+                            <div style="margin-top: 8px">
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        id="enableAutoScroll"
+                                    />
+                                    무한 스크롤 자동 처리
+                                    <span class="setting-description"
+                                        >페이지 끝까지 자동 스크롤하여 모든
+                                        콘텐츠 로드</span
+                                    >
+                                </label>
+                            </div>
+                            <div style="margin-top: 8px">
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        id="enableLoadMoreButtons"
+                                    />
+                                    더보기 버튼 자동 클릭
+                                    <span class="setting-description"
+                                        >더보기 버튼을 자동으로 클릭하여 콘텐츠
+                                        로드</span
+                                    >
+                                </label>
+                            </div>
+                            <div style="margin-top: 8px">
+                                <label for="loadMoreButtonSelectors"
+                                    >추가 버튼 선택자 (선택사항)</label
+                                >
+                                <div style="display: flex; gap: 5px">
+                                    <input
+                                        type="text"
+                                        id="loadMoreButtonSelectors"
+                                        placeholder=".more-button, #loadMore"
+                                        style="flex: 1"
+                                    />
+                                    <button
+                                        id="selectButtonSelector"
+                                        class="icon-btn"
+                                        title="버튼 선택"
+                                    >
+                                        👆
+                                    </button>
+                                    <button
+                                        id="clearButtonSelector"
+                                        class="icon-btn"
+                                        title="지우기"
+                                    >
+                                        ❌
+                                    </button>
+                                </div>
+                                <div class="setting-description">
+                                    기본 선택자 외에 추가할 '더보기' 버튼 선택자
+                                </div>
+                            </div>
+                        </div>
+
                         <button id="autoExtractBtn" class="action-btn">
                             자동 추출 실행
                         </button>

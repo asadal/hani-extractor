@@ -1,6 +1,10 @@
 let isExtracting = false;
 let extractedItems = [];
 let enableAreaSelection = false;
+// 새로 추가된 변수들
+let enableAutoScroll = false;
+let enableLoadMoreButtons = false;
+let loadMoreButtonSelectors = "";
 
 // 안전한 탭 메시지 전송 함수
 function sendMessageToTab(tabId, message) {
@@ -53,10 +57,30 @@ document.addEventListener("DOMContentLoaded", function () {
     "enableAreaSelection",
   );
 
+  // 새로운 동적 콘텐츠 옵션 요소들
+  const enableAutoScrollCheckbox = document.getElementById("enableAutoScroll");
+  const enableLoadMoreButtonsCheckbox = document.getElementById(
+    "enableLoadMoreButtons",
+  );
+  const loadMoreButtonSelectorsInput = document.getElementById(
+    "loadMoreButtonSelectors",
+  );
+  const selectButtonSelectorBtn = document.getElementById(
+    "selectButtonSelector",
+  );
+  const clearButtonSelectorBtn = document.getElementById("clearButtonSelector");
+
   // 팝업이 열릴 때마다 스토리지에서 대기 중인 선택자가 있는지 확인
   function checkPendingSelector() {
     chrome.storage.local.get(
-      ["selectorPending", "lastSelectedSelector", "lastSelectionType"],
+      [
+        "selectorPending",
+        "lastSelectedSelector",
+        "lastSelectionType",
+        "autoExtractTags",
+        "containerSelector",
+        "loadMoreButtonSelectors",
+      ],
       function (result) {
         if (chrome.runtime.lastError) {
           console.error(
@@ -66,27 +90,44 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
 
+        // 현재 입력 필드들 업데이트
+        if (result.autoExtractTags)
+          autoExtractTags.value = result.autoExtractTags;
+        if (result.containerSelector)
+          containerSelector.value = result.containerSelector;
+        if (result.loadMoreButtonSelectors)
+          loadMoreButtonSelectorsInput.value = result.loadMoreButtonSelectors;
+
         // 대기 중인 선택자가 있으면 처리
         if (result.selectorPending && result.lastSelectedSelector) {
           console.log("대기 중인 선택자 발견:", result.lastSelectedSelector);
+          console.log("선택자 유형:", result.lastSelectionType);
 
           if (result.lastSelectionType === "tag") {
-            // 태그 선택자 필드에 추가
-            const currentValue = autoExtractTags.value.trim();
+            // 값이 이미 autoExtractTags에 반영되어 있는지 확인
+            const currentValue = autoExtractTags.value || "";
             const newSelector = result.lastSelectedSelector.trim();
 
-            if (currentValue) {
-              // 이미 값이 있으면 쉼표로 구분해서 추가
-              autoExtractTags.value = currentValue + ", " + newSelector;
-            } else {
-              // 값이 없으면 그대로 설정
-              autoExtractTags.value = newSelector;
-            }
+            // 현재 값에 선택자가 없는 경우에만 추가
+            if (!currentValue.includes(newSelector)) {
+              // 선택자 값 업데이트
+              if (currentValue) {
+                // 이미 값이 있으면 쉼표로 구분해서 추가
+                autoExtractTags.value = currentValue + ", " + newSelector;
+              } else {
+                // 값이 없으면 그대로 설정
+                autoExtractTags.value = newSelector;
+              }
 
-            // 설정 저장
-            chrome.storage.local.set({
-              autoExtractTags: autoExtractTags.value,
-            });
+              // 설정 저장
+              chrome.storage.local.set({
+                autoExtractTags: autoExtractTags.value,
+              });
+
+              console.log("태그 선택자가 추가됨:", newSelector);
+            } else {
+              console.log("태그 선택자가 이미 존재함:", newSelector);
+            }
           } else if (result.lastSelectionType === "container") {
             // 컨테이너 선택자 필드에 설정
             containerSelector.value = result.lastSelectedSelector.trim();
@@ -95,6 +136,35 @@ document.addEventListener("DOMContentLoaded", function () {
             chrome.storage.local.set({
               containerSelector: containerSelector.value,
             });
+
+            console.log(
+              "컨테이너 선택자가 설정됨:",
+              result.lastSelectedSelector,
+            );
+          } else if (result.lastSelectionType === "button") {
+            // 버튼 선택자 필드에 추가
+            const currentValue = loadMoreButtonSelectorsInput.value || "";
+            const newSelector = result.lastSelectedSelector.trim();
+
+            // 현재 값에 선택자가 없는 경우에만 추가
+            if (!currentValue.includes(newSelector)) {
+              if (currentValue) {
+                loadMoreButtonSelectorsInput.value =
+                  currentValue + ", " + newSelector;
+              } else {
+                loadMoreButtonSelectorsInput.value = newSelector;
+              }
+
+              // 변수와 스토리지에 모두 저장
+              loadMoreButtonSelectors = loadMoreButtonSelectorsInput.value;
+              chrome.storage.local.set({
+                loadMoreButtonSelectors: loadMoreButtonSelectors,
+              });
+
+              console.log("버튼 선택자가 추가됨:", newSelector);
+            } else {
+              console.log("버튼 선택자가 이미 존재함:", newSelector);
+            }
           }
 
           // 처리 완료 후 플래그 초기화
@@ -108,6 +178,24 @@ document.addEventListener("DOMContentLoaded", function () {
       },
     );
   }
+
+  // 선택자 저장 확인 타이머 추가
+  const selectorRefreshInterval = setInterval(() => {
+    // 팝업이 열려 있는 동안 주기적으로 선택자 확인
+    chrome.storage.local.get(["selectorPending"], function (result) {
+      if (result.selectorPending) {
+        console.log("새 선택자 감지됨, 다시 확인 중...");
+        checkPendingSelector();
+      }
+    });
+  }, 1000); // 1초마다 확인
+
+  // 팝업이 닫힐 때 타이머 정리
+  window.addEventListener("unload", function () {
+    if (selectorRefreshInterval) {
+      clearInterval(selectorRefreshInterval);
+    }
+  });
 
   // 팝업이 열릴 때마다 실행
   checkPendingSelector();
@@ -135,6 +223,9 @@ document.addEventListener("DOMContentLoaded", function () {
       "enableAreaSelection",
       "autoExtractTags",
       "containerSelector",
+      "enableAutoScroll",
+      "enableLoadMoreButtons",
+      "loadMoreButtonSelectors",
     ],
     function (result) {
       if (chrome.runtime.lastError) {
@@ -146,6 +237,12 @@ document.addEventListener("DOMContentLoaded", function () {
       if (result.isExtracting !== undefined) isExtracting = result.isExtracting;
       if (result.enableAreaSelection !== undefined)
         enableAreaSelection = result.enableAreaSelection;
+      if (result.enableAutoScroll !== undefined)
+        enableAutoScroll = result.enableAutoScroll;
+      if (result.enableLoadMoreButtons !== undefined)
+        enableLoadMoreButtons = result.enableLoadMoreButtons;
+      if (result.loadMoreButtonSelectors !== undefined)
+        loadMoreButtonSelectors = result.loadMoreButtonSelectors;
 
       // UI 업데이트
       updateExtractedTextDisplay();
@@ -157,6 +254,9 @@ document.addEventListener("DOMContentLoaded", function () {
       if (result.containerSelector)
         containerSelector.value = result.containerSelector;
       enableAreaSelectionCheckbox.checked = enableAreaSelection;
+      enableAutoScrollCheckbox.checked = enableAutoScroll;
+      enableLoadMoreButtonsCheckbox.checked = enableLoadMoreButtons;
+      loadMoreButtonSelectorsInput.value = loadMoreButtonSelectors;
     },
   );
 
@@ -280,6 +380,26 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
+  // 자동 스크롤 체크박스 이벤트 리스너
+  enableAutoScrollCheckbox.addEventListener("change", function () {
+    enableAutoScroll = this.checked;
+    chrome.storage.local.set({ enableAutoScroll: enableAutoScroll });
+  });
+
+  // 더보기 버튼 자동 클릭 체크박스 이벤트 리스너
+  enableLoadMoreButtonsCheckbox.addEventListener("change", function () {
+    enableLoadMoreButtons = this.checked;
+    chrome.storage.local.set({ enableLoadMoreButtons: enableLoadMoreButtons });
+  });
+
+  // 더보기 버튼 선택자 입력란 이벤트 리스너
+  loadMoreButtonSelectorsInput.addEventListener("change", function () {
+    loadMoreButtonSelectors = this.value;
+    chrome.storage.local.set({
+      loadMoreButtonSelectors: loadMoreButtonSelectors,
+    });
+  });
+
   // 자동 추출 태그 설정
   autoExtractTags.addEventListener("change", function () {
     chrome.storage.local.set({ autoExtractTags: this.value });
@@ -300,6 +420,11 @@ document.addEventListener("DOMContentLoaded", function () {
     startElementSelection("container");
   });
 
+  // 버튼 선택자 선택 버튼
+  selectButtonSelectorBtn.addEventListener("click", function () {
+    startElementSelection("button");
+  });
+
   // 태그 지우기 버튼
   document
     .getElementById("clearTagsBtn")
@@ -317,6 +442,13 @@ document.addEventListener("DOMContentLoaded", function () {
       containerSelector.value = "";
       chrome.storage.local.set({ containerSelector: "" });
     });
+
+  // 버튼 선택자 지우기 버튼
+  clearButtonSelectorBtn.addEventListener("click", function () {
+    loadMoreButtonSelectorsInput.value = "";
+    loadMoreButtonSelectors = "";
+    chrome.storage.local.set({ loadMoreButtonSelectors: "" });
+  });
 
   // 요소 선택 모드 시작 함수
   function startElementSelection(type) {
@@ -355,15 +487,18 @@ document.addEventListener("DOMContentLoaded", function () {
                     console.log("요소 선택 시작:", response);
 
                     // 사용자에게 안내 메시지 표시
+                    let message = "";
                     if (type === "tag") {
-                      alert(
-                        "추출할 태그로 사용할 요소를 클릭하세요. 선택 후 팝업 창을 다시 열어주세요.",
-                      );
-                    } else {
-                      alert(
-                        "컨테이너 선택자로 사용할 요소를 클릭하세요. 선택 후 팝업 창을 다시 열어주세요.",
-                      );
+                      message =
+                        "추출할 태그로 사용할 요소를 클릭하세요. 선택 후 팝업 창을 다시 열어주세요.";
+                    } else if (type === "container") {
+                      message =
+                        "컨테이너 선택자로 사용할 요소를 클릭하세요. 선택 후 팝업 창을 다시 열어주세요.";
+                    } else if (type === "button") {
+                      message =
+                        "더보기 버튼 선택자로 사용할 버튼을 클릭하세요. 선택 후 팝업 창을 다시 열어주세요.";
                     }
+                    alert(message);
 
                     // 팝업 창을 닫아 웹 페이지와 상호작용할 수 있게 함
                     window.close();
@@ -382,7 +517,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // 자동 추출 실행
+  // 자동 추출 실행 - 옵션 추가됨
   autoExtractBtn.addEventListener("click", function () {
     // 버튼을 일시적으로 비활성화하여 연속 클릭 방지
     autoExtractBtn.disabled = true;
@@ -422,6 +557,11 @@ document.addEventListener("DOMContentLoaded", function () {
                   action: "autoExtract",
                   tags: tags,
                   container: container,
+                  options: {
+                    enableAutoScroll: enableAutoScroll,
+                    enableLoadMoreButtons: enableLoadMoreButtons,
+                    loadMoreButtonSelectors: loadMoreButtonSelectors,
+                  },
                 },
                 function (response) {
                   if (chrome.runtime.lastError) {
@@ -836,6 +976,22 @@ document.addEventListener("DOMContentLoaded", function () {
           // 설정 저장
           chrome.storage.local.set({
             containerSelector: containerSelector.value,
+          });
+        } else if (request.selectionType === "button") {
+          // 버튼 선택자 필드에 추가
+          const currentValue = loadMoreButtonSelectorsInput.value.trim();
+          const newSelector = request.selector.trim();
+
+          if (currentValue) {
+            loadMoreButtonSelectorsInput.value =
+              currentValue + ", " + newSelector;
+          } else {
+            loadMoreButtonSelectorsInput.value = newSelector;
+          }
+
+          loadMoreButtonSelectors = loadMoreButtonSelectorsInput.value;
+          chrome.storage.local.set({
+            loadMoreButtonSelectors: loadMoreButtonSelectors,
           });
         }
 
